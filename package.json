@@ -1,12 +1,12 @@
 {
-  "name": "Phaser3ES6Webpack",
+  "name": "GameeBasket",
   "version": "1.0.0",
   "description": "",
-  "author": "niklas berg <me@niklasberg.se>",
+  "author": "Kirill Bunin <kirill@bunin.cz>",
   "main": "index.js",
   "scripts": {
     "dev": "webpack",
-    "deploy": "webpack --config webpack.production.config.js",
+    "build": "webpack --config webpack.production.config.js",
     "test": "eslint ./src/**/**.js"
   },
   "license": "MIT",
@@ -32,8 +32,10 @@
     "webpack": "^3.11.0"
   },
   "dependencies": {
-    "npm": "^5.7.1",
-    "phaser": "^3.2.0",
-    "phaser-animated-tiles": "^1.0.0"
+    "axios": "^0.18.0",
+    "phaser": "^3.7.1",
+    "phaser-animated-tiles": "^1.0.0",
+    "pica": "^4.1.1",
+    "whatwg-fetch": "^2.0.4"
   }
 }

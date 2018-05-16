@@ -1,16 +1,16 @@
 import GameConfig from './GameConfig'
-import { isFunction } from './helper'
+import Store from './Store'
+const pica = require('pica')()
 
 class BasketBall {
   constructor (context, config) {
     // super()
     // super(config.world, config.x, config.y, config.texture, config.frame, config.options)
-    this.config = config
     this.context = context
 
-    this.isReseting = false
-    this.isFalling = false
-    this.defaultPosition = {x: GameConfig.width / 2, y: GameConfig.height - 105}
+    this.mode = 'casual'
+
+    this.defaultPosition = {x: GameConfig.width / 2, y: GameConfig.height / 2}
 
     this.ball = this.context.matter.add.circle(this.defaultPosition.x, this.defaultPosition.y, 36,
       {
@@ -18,127 +18,164 @@ class BasketBall {
         isStatic: true
       }
     )
-    // this.ball.collisionFilter.category = config.category1
     this.ballOverlay = this.context.add.image(this.ball.position.x, this.ball.position.y, 'ball')
-    this.ballOverlay.setDepth(3)
+    this.setDepth(18)
 
-    this.position = this.ball.position
+    this.ballOverlayChallenger = this.context.add.image(this.ballOverlay.x, this.ballOverlay.y, 'ball-placeholder')
+    this.ballOverlayChallenger.setAlpha(0)
+
+    this.ballOverlayChallengerNet = this.context.add.image(this.ballOverlay.x, this.ballOverlay.y, 'ballChallengerOverlay')
+    this.ballOverlayChallengerNet.setAlpha(0)
+
+    this.ballMask = this.context.add.graphics(false)
+    this.ballMask.fillCircle(0, 0, 52)
+    this.ballOverlayChallenger.setMask(this.ballMask.createGeometryMask())
+  }
+
+  targetOverlay () {
+    console.log('Called targetOverlay')
+    if (this.mode === 'casual') {
+      return this.ballOverlay
+    } else {
+      return [this.ballOverlayChallenger, this.ballOverlayChallengerNet]
+    }
   }
 
   update () {
     this.ballOverlay.x = this.ball.position.x
     this.ballOverlay.y = this.ball.position.y
     this.ballOverlay.rotation = this.ball.angle
-    // this.ballOverlay.alpha = 0
+
+    this.ballOverlayChallenger.x = this.ball.position.x
+    this.ballOverlayChallenger.y = this.ball.position.y
+    this.ballOverlayChallenger.rotation = this.ball.angle
+
+    this.ballOverlayChallengerNet.x = this.ball.position.x
+    this.ballOverlayChallengerNet.y = this.ball.position.y
+    this.ballOverlayChallengerNet.rotation = this.ball.angle
+
+    this.ballMask.alpha = this.ballOverlayChallengerNet.alpha
+    this.ballMask.x = this.ball.position.x
+    this.ballMask.y = this.ball.position.y
+    this.ballMask.setScale(this.ballOverlayChallenger.scaleX, this.ballOverlayChallenger.scaleY)
   }
 
-  resetPosition () {
-    if (!this.isReseting) {
-      this.isReseting = true
-      this.context.tweens.add({
-        targets: this.ballOverlay,
-        alpha: 0,
-        ease: 'Power1',
-        duration: 300,
-        onComplete: () => {
-          this.ballOverlay.setDepth(3)
-          this.isFalling = false
-          Phaser.Physics.Matter.Matter.Body.setStatic(this.ball, true)
-          Phaser.Physics.Matter.Matter.Body.setPosition(this.ball, {x: GameConfig.width / 2, y: GameConfig.height})
-          const ballPosition = {y: GameConfig.height}
-          this.context.tweens.add({
-            targets: ballPosition,
-            y: this.defaultPosition.y,
-            ease: 'Back',
-            easeParams: [2],
-            duration: 250,
-            onUpdate: () => {
-              Phaser.Physics.Matter.Matter.Body.setPosition(this.ball, {x: GameConfig.width / 2, y: ballPosition.y})
-            },
-            onComplete: () => {
-              this.isReseting = false
-              this.isShooting = false
-              if (isFunction(this.config.onResetCompleted)) {
-                this.config.onResetCompleted()
-              }
+  resetPosition (type, hardReset) {
+    this.changeBall()
+      .then(() => { this.finishResetPosition() })
+  }
+
+  finishResetPosition () {
+    this.state = 'reseting'
+    this.setDepth(18)
+    Phaser.Physics.Matter.Matter.Body.setStatic(this.ball, true)
+    Phaser.Physics.Matter.Matter.Body.setPosition(this.ball, {x: GameConfig.width / 2, y: GameConfig.height})
+    const ballPosition = {y: GameConfig.height}
+    this.context.tweens.add({
+      targets: ballPosition,
+      y: this.defaultPosition.y,
+      ease: 'Back',
+      easeParams: [2],
+      duration: 250,
+      onUpdate: () => {
+        Phaser.Physics.Matter.Matter.Body.setPosition(this.ball, {x: GameConfig.width / 2, y: ballPosition.y})
+      }
+    })
+    this.context.tweens.add({
+      targets: this.targetOverlay(),
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      ease: 'Back',
+      easeParams: [2],
+      duration: 250
+    })
+  }
+
+  setDepth (i) {
+    if (this.mode === 'casual') {
+      this.ballOverlay.setDepth(i)
+    } else {
+      this.ballOverlayChallenger.setDepth(i)
+      this.ballOverlayChallengerNet.setDepth(i)
+    }
+  }
+
+  async changeBall () {
+    return new Promise((resolve) => {
+      this.mode = 'challenger'
+      fetch(Store.state.socialData[0].avatar)
+        .then(
+          (response) => {
+            if (response.status !== 200) {
+              console.log('response.status', response.status)
+              this.ballOverlayChallenger.setTexture('challengerPlaceholder')
+              this.ballOverlay.setAlpha(0)
+              this.ballOverlayChallenger.setAlpha(1)
+              this.ballOverlayChallengerNet.setAlpha(1)
+              resolve()
             }
-          })
-          this.context.tweens.add({
-            targets: this.ballOverlay,
-            alpha: 1,
-            scaleX: 1,
-            scaleY: 1,
-            ease: 'Back',
-            easeParams: [2],
-            duration: 250
-          })
-        }
-      })
-    }
-  }
+            response.blob().then((res) => {
+              console.log('Successful img load')
+              let myURL = (window.URL || window.webkitURL).createObjectURL(res)
+              // Canvas for resizing
+              let finalSizeCanvas = document.createElement('canvas')
+              finalSizeCanvas.width = 102
+              finalSizeCanvas.height = 102
 
-  backToDefaultPosition () {
-    if (!this.isReseting) {
-      this.isReseting = true
-      const ballPosition = {x: this.position.x, y: this.position.y}
-      this.context.tweens.add({
-        targets: ballPosition,
-        y: this.defaultPosition.y,
-        x: this.defaultPosition.x,
-        ease: 'Power1.ease',
-        duration: 150,
-        onUpdate: () => {
-          Phaser.Physics.Matter.Matter.Body.setPosition(this.ball, {x: ballPosition.x, y: ballPosition.y})
-        },
-        onComplete: () => {
-          this.isReseting = false
-        }
-      })
-    }
-  }
+              // Image to resize
+              const sourceImage = new Image()
+              sourceImage.onload = () => {
+                console.log('sourceImage onload')
+                pica.resize(sourceImage, finalSizeCanvas, {
+                  unsharpAmount: 80,
+                  unsharpRadius: 0.6,
+                  unsharpThreshold: 2
+                })
+                  // .then((result) => {
+                  //   return result.getContext('2d').drawImage(document.getElementById('ballOverlaySVG'), 0, 0)
+                  // })
+                  .then(result => pica.toBlob(result, 'image/jpeg', 1))
+                  .then((blob) => {
+                    const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+                    myURL = (window.URL || window.webkitURL).createObjectURL(blob)
+                    this.context.load.image(randomString, myURL)
+                    this.context.load.once('complete', (e) => {
+                      // Replace texture
+                      this.ballOverlayChallenger.setTexture(randomString)
+                      // You can try also
+                      // this.ballOverlayChallenger.setTexture('ball-purple')
 
-  setCollisionCategory (category) {
-    this.ball.collisionFilter.category = category
-  }
-
-  shoot (props) {
-    if (!this.isShooting && !this.isReseting) {
-      this.isShooting = true
-      this.context.tweens.add({
-        targets: this.ballOverlay,
-        scaleX: 0.66,
-        scaleY: 0.66,
-        ease: 'Power4.easeIn',
-        duration: 600
-        // onComplete: () => {
-        //   if (this.isFalling) {
-        //     this.tweens.add({
-        //       targets: this.ballOverlay,
-        //       scaleX: 0.62,
-        //       scaleY: 0.62,
-        //       ease: 'Power1.easeIn',
-        //       duration: 150,
-        //       yoyo: true
-        //     })
-        //   }
-        // }
-      })
-      Phaser.Physics.Matter.Matter.Body.setStatic(this.ball, false)
-      Phaser.Physics.Matter.Matter.Body.setMass(this.ball, 40)
-      this.ball.restitution = 0.7
-      this.ball.friction = 0
-      // this.getForcePositionX(pointerUp.downX)
-      Phaser.Physics.Matter.Matter.Body.applyForce(this.ball, {x: this.getForcePositionX(props.mouse.downX), y: this.ball.position.y}, props.force)
-      // console.log(this.ball.velocity)
-      // Phaser.Physics.Matter.Matter.Body.setVelocity(this.ball, props)
-    }
-  }
-
-  getForcePositionX (clickPosition) {
-    const ii = (clickPosition - this.ball.position.x) / (56 / 100)
-    const i = ii * (9 / 100)
-    const posX = i + this.ball.position.x
-    return posX
+                      // Switch between overlays
+                      if (this.ballOverlay && this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
+                        this.ballOverlay.tween.stop()
+                      }
+                      this.ballOverlay.setAlpha(0)
+                      this.ballOverlayChallenger.setAlpha(1)
+                      this.ballOverlayChallengerNet.setAlpha(1)
+                      resolve('success')
+                    })
+                    this.context.load.start()
+                  })
+              }
+              sourceImage.src = myURL
+            })
+          }
+        )
+        .catch(function (err) {
+          console.log('COULDNT FETCH')
+          console.error(err)
+          this.ballOverlayChallenger.setTexture('challengerPlaceholder')
+          if (this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
+            this.ballOverlay.tween.stop()
+          }
+          this.ballOverlay.setAlpha(0)
+          this.ballOverlayChallenger.setAlpha(1)
+          this.ballOverlayChallengerNet.setAlpha(1)
+          alert(err)
+          resolve(err)
+        })
+    })
   }
 }
 

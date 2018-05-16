@@ -1,16 +1,16 @@
 import GameScene from './GameScene'
 
 export default {
-  type: Phaser.AUTO,
+  type: Phaser.WEBGL,
   parent: 'content',
   // backgroundColor: '#fdf1d2',
   transparent: true,
-  width: window.innerWidth > window.innerHeight ? window.innerHeight : window.innerWidth,
+  width: window.innerWidth > 667 ? 667 : window.innerWidth,
   height: 667,
-  resolution: window.devicePixelRatio,
+  resolution: window.devicePixelRatio * (window.innerHeight / 667),
   autoResize: true,
   fps: {
-    min: 60,
+    min: 30,
     target: 60,
     forceSetTimeOut: false,
     deltaHistory: 60
@@ -22,27 +22,6 @@ export default {
         x: 0,
         y: 4.5
       }
-      // debug: true,
-      // debugShowBody: true,
-      // isFixed: true,
-      // debugBodyColor: 0xff0000,
-      // wireframes: true,
-      // showSleeping: true,
-      // showDebug: true,
-      // showBroadphase: true,
-      // showBounds: true,
-      // showVelocity: true,
-      // showCollisions: true,
-      // showSeparations: true,
-      // showAxes: true,
-      // showPositions: true,
-      // showAngleIndicator: true,
-      // showIds: true,
-      // showShadows: true,
-      // showVertexNumbers: true,
-      // showConvexHulls: true,
-      // showInternalEdges: true,
-      // showMousePosition: true
     }
   },
   scene: [

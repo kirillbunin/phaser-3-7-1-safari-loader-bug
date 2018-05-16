@@ -1,21 +1,9 @@
 class Store {
   constructor () {
     this.state = {
-      score: 0,
-      highScore: 3
-    }
-    this.mutations = {}
-  }
-  updateScore (i) {
-    this.state.score = i
-  }
-  updateHighScore (i) {
-    if (i) {
-      this.state.highScore = i
-      document.getElementById('highScore').innerHTML = i
-    } else {
-      this.state.highScore = this.state.score
-      document.getElementById('highScore').innerHTML = this.state.score
+      socialData: [
+        { avatar: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/Tortoiseshell_she-cat.JPG/1200px-Tortoiseshell_she-cat.JPG' }
+      ]
     }
   }
 }
