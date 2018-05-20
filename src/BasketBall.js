@@ -128,34 +128,25 @@ class BasketBall {
               unsharpRadius: 0.6,
               unsharpThreshold: 2
             })
-              // .then((result) => {
-              //   return result.getContext('2d').drawImage(document.getElementById('ballOverlaySVG'), 0, 0)
-              // })
-              .then(result => pica.toBlob(result, 'image/jpeg', 1))
-              .then((blob) => {
-                console.log('Blob successful', blob)
+              .then((result) => {
                 const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-                myURL = (window.URL || window.webkitURL).createObjectURL(blob)
-                this.context.load.image(randomString, myURL)
-                this.context.load.once('complete', (e) => {
-                  console.log('load completed, setting texture')
-                  console.log('texture.key before', this.ballOverlayChallenger.texture.key)
-                  // Replace texture
-                  this.ballOverlayChallenger.setTexture(randomString)
-                  // You can try also
-                  // this.ballOverlayChallenger.setTexture('ball-purple')
-                  console.log('texture.key after', this.ballOverlayChallenger.texture.key)
 
-                  // Switch between overlays
-                  if (this.ballOverlay && this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
-                    this.ballOverlay.tween.stop()
-                  }
-                  this.ballOverlay.setAlpha(0)
-                  this.ballOverlayChallenger.setAlpha(1)
-                  this.ballOverlayChallengerNet.setAlpha(1)
-                  // resolve('success')
-                })
-                this.context.load.start()
+                this.context.textures.addImage(randomString, result)
+                console.log('added to Texture Manager, setting texture to Image')
+                console.log('texture.key before', this.ballOverlayChallenger.texture.key)
+                // Replace texture
+                this.ballOverlayChallenger.setTexture(randomString)
+                // You can try also
+                // this.ballOverlayChallenger.setTexture('ball-purple')
+                console.log('texture.key after', this.ballOverlayChallenger.texture.key)
+
+                // Switch between overlays
+                if (this.ballOverlay && this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
+                  this.ballOverlay.tween.stop()
+                }
+                this.ballOverlay.setAlpha(0)
+                this.ballOverlayChallenger.setAlpha(1)
+                this.ballOverlayChallengerNet.setAlpha(1)
               })
           }
           sourceImage.src = myURL
