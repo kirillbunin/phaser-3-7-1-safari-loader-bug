@@ -1,5 +1,6 @@
 import GameConfig from './GameConfig'
 import Store from './Store'
+import axios from 'axios'
 const pica = require('pica')()
 
 class BasketBall {
@@ -19,9 +20,8 @@ class BasketBall {
       }
     )
     this.ballOverlay = this.context.add.image(this.ball.position.x, this.ball.position.y, 'ball')
-    this.setDepth(18)
 
-    this.ballOverlayChallenger = this.context.add.image(this.ballOverlay.x, this.ballOverlay.y, 'ball-placeholder')
+    this.ballOverlayChallenger = this.context.add.image(this.ballOverlay.x, this.ballOverlay.y, 'ball-green')
     this.ballOverlayChallenger.setAlpha(0)
 
     this.ballOverlayChallengerNet = this.context.add.image(this.ballOverlay.x, this.ballOverlay.y, 'ballChallengerOverlay')
@@ -30,6 +30,8 @@ class BasketBall {
     this.ballMask = this.context.add.graphics(false)
     this.ballMask.fillCircle(0, 0, 52)
     this.ballOverlayChallenger.setMask(this.ballMask.createGeometryMask())
+    
+    this.setDepth(18)
   }
 
   targetOverlay () {
@@ -93,89 +95,85 @@ class BasketBall {
   }
 
   setDepth (i) {
-    if (this.mode === 'casual') {
-      this.ballOverlay.setDepth(i)
-    } else {
-      this.ballOverlayChallenger.setDepth(i)
-      this.ballOverlayChallengerNet.setDepth(i)
-    }
+    this.ballOverlay.setDepth(i)
+    this.ballOverlayChallenger.setDepth(i)
+    this.ballOverlayChallengerNet.setDepth(i)
   }
 
-  async changeBall () {
-    return new Promise((resolve) => {
-      this.mode = 'challenger'
-      fetch(Store.state.socialData[0].avatar)
-        .then(
-          (response) => {
-            if (response.status !== 200) {
-              console.log('response.status', response.status)
-              this.ballOverlayChallenger.setTexture('challengerPlaceholder')
-              this.ballOverlay.setAlpha(0)
-              this.ballOverlayChallenger.setAlpha(1)
-              this.ballOverlayChallengerNet.setAlpha(1)
-              resolve()
-            }
-            response.blob().then((res) => {
-              console.log('Successful img load')
-              let myURL = (window.URL || window.webkitURL).createObjectURL(res)
-              // Canvas for resizing
-              let finalSizeCanvas = document.createElement('canvas')
-              finalSizeCanvas.width = 102
-              finalSizeCanvas.height = 102
+  changeBall () {
+    return axios.get(Store.state.socialData[0].avatar, { responseType: 'blob' })
+      .then(
+        (res) => {
+          if (res.status !== 200) {
+            console.log('res.status', res.status)
+            this.ballOverlayChallenger.setTexture('challengerPlaceholder')
+            this.ballOverlay.setAlpha(0)
+            this.ballOverlayChallenger.setAlpha(1)
+            this.ballOverlayChallengerNet.setAlpha(1)
+            resolve()
+          }
+          console.log('Successful img load')
+          let myURL = (window.URL || window.webkitURL).createObjectURL(res.data)
+          // Canvas for resizing
+          let finalSizeCanvas = document.createElement('canvas')
+          finalSizeCanvas.width = 102
+          finalSizeCanvas.height = 102
 
-              // Image to resize
-              const sourceImage = new Image()
-              sourceImage.onload = () => {
-                console.log('sourceImage onload')
-                pica.resize(sourceImage, finalSizeCanvas, {
-                  unsharpAmount: 80,
-                  unsharpRadius: 0.6,
-                  unsharpThreshold: 2
-                })
-                  // .then((result) => {
-                  //   return result.getContext('2d').drawImage(document.getElementById('ballOverlaySVG'), 0, 0)
-                  // })
-                  .then(result => pica.toBlob(result, 'image/jpeg', 1))
-                  .then((blob) => {
-                    const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
-                    myURL = (window.URL || window.webkitURL).createObjectURL(blob)
-                    this.context.load.image(randomString, myURL)
-                    this.context.load.once('complete', (e) => {
-                      // Replace texture
-                      this.ballOverlayChallenger.setTexture(randomString)
-                      // You can try also
-                      // this.ballOverlayChallenger.setTexture('ball-purple')
-
-                      // Switch between overlays
-                      if (this.ballOverlay && this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
-                        this.ballOverlay.tween.stop()
-                      }
-                      this.ballOverlay.setAlpha(0)
-                      this.ballOverlayChallenger.setAlpha(1)
-                      this.ballOverlayChallengerNet.setAlpha(1)
-                      resolve('success')
-                    })
-                    this.context.load.start()
-                  })
-              }
-              sourceImage.src = myURL
+          // Image to resize
+          const sourceImage = new Image()
+          sourceImage.onload = () => {
+            console.log('sourceImage onload')
+            pica.resize(sourceImage, finalSizeCanvas, {
+              unsharpAmount: 80,
+              unsharpRadius: 0.6,
+              unsharpThreshold: 2
             })
+              // .then((result) => {
+              //   return result.getContext('2d').drawImage(document.getElementById('ballOverlaySVG'), 0, 0)
+              // })
+              .then(result => pica.toBlob(result, 'image/jpeg', 1))
+              .then((blob) => {
+                console.log('Blob successful', blob)
+                const randomString = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+                myURL = (window.URL || window.webkitURL).createObjectURL(blob)
+                this.context.load.image(randomString, myURL)
+                this.context.load.once('complete', (e) => {
+                  console.log('load completed, setting texture')
+                  console.log('texture.key before', this.ballOverlayChallenger.texture.key)
+                  // Replace texture
+                  this.ballOverlayChallenger.setTexture(randomString)
+                  // You can try also
+                  // this.ballOverlayChallenger.setTexture('ball-purple')
+                  console.log('texture.key after', this.ballOverlayChallenger.texture.key)
+
+                  // Switch between overlays
+                  if (this.ballOverlay && this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
+                    this.ballOverlay.tween.stop()
+                  }
+                  this.ballOverlay.setAlpha(0)
+                  this.ballOverlayChallenger.setAlpha(1)
+                  this.ballOverlayChallengerNet.setAlpha(1)
+                  // resolve('success')
+                })
+                this.context.load.start()
+              })
           }
-        )
-        .catch(function (err) {
-          console.log('COULDNT FETCH')
-          console.error(err)
-          this.ballOverlayChallenger.setTexture('challengerPlaceholder')
-          if (this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
-            this.ballOverlay.tween.stop()
-          }
-          this.ballOverlay.setAlpha(0)
-          this.ballOverlayChallenger.setAlpha(1)
-          this.ballOverlayChallengerNet.setAlpha(1)
-          alert(err)
-          resolve(err)
-        })
-    })
+          sourceImage.src = myURL
+        }
+      )
+      .catch(function (err) {
+        console.log('COULDNT FETCH')
+        console.error(err)
+        this.ballOverlayChallenger.setTexture('challengerPlaceholder')
+        if (this.ballOverlay.tween && typeof this.ballOverlay.tween.stop === 'function') {
+          this.ballOverlay.tween.stop()
+        }
+        this.ballOverlay.setAlpha(0)
+        this.ballOverlayChallenger.setAlpha(1)
+        this.ballOverlayChallengerNet.setAlpha(1)
+        alert(err)
+        // resolve(err)
+      })
   }
 }
 
